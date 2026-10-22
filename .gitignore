@@ -1,0 +1,28 @@
+# Environment secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Node
+node_modules/
+dist-ssr/
+*.local
+
+# Logs
+*.log
+
+# Local/editor artifacts
+.vscode.zip
+project_audit.txt
+.DS_Store
+desktop.ini
