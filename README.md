@@ -21,38 +21,50 @@ agent execution trace.
 
 ## Architecture
 
-```
-User (browser)
-    │
-    ▼
-React + Vite frontend  (port 5173)
-    │
-    ▼  HTTP POST
-Flask backend  (port 5000)
-    │
-    ├── /interpret        ← natural-language entry point
-    ├── /route-request    ← structured workflow entry point
-    └── /evaluate-loan    ← standalone loan form entry point
-         │
-         ▼
-    Supervisor Agent  ──  routes to specialist agents
-         │
-         ├── Banking Agent      get profile / balance / transactions
-         ├── Financial Agent    calculate DTI and loan-to-income ratios
-         ├── Credit Agent       evaluate credit rules / what-if suggestions
-         ├── Risk Agent         flag high-value transactions
-         ├── Customer Agent     validate applicant input
-         ├── Loan Decision Agent apply decision rules
-         └── Explanation Agent  format the final result
+```mermaid
+flowchart LR
+    user[User] --> ui[React and Vite UI]
+    ui -->|HTTP JSON| api[Flask API]
+
+    api -->|POST /interpret| interpreter[Gemini interpreter]
+    interpreter -->|API unavailable or error| fallback[Local rule-based interpreter]
+    interpreter -->|Validated intent| supervisor[Supervisor and workflow router]
+    fallback -->|Classified intent| supervisor
+    api -->|POST /route-request| supervisor
+
+    supervisor -->|Account lookup or transaction review| banking[Banking Agent]
+    banking --> mock[(Fictional customer and account data)]
+    banking -->|Transaction review| risk[Risk Agent]
+    supervisor -->|Loan check or what-if| banking
+    banking -->|Customer profile| financial[Financial Agent]
+    financial --> credit[Credit Agent]
+    credit -->|Loan check| rules[Credit rules]
+    credit -->|What-if| suggestions[Counterfactual suggestions]
+
+    api -->|POST /evaluate-loan| customer[Customer Agent]
+    customer --> standaloneFinancial[Financial Agent]
+    standaloneFinancial --> decision[Loan Decision Agent]
+    decision --> explanation[Explanation Agent]
+
+    banking --> trace[Execution trace]
+    risk --> trace
+    financial --> trace
+    credit --> trace
+    customer --> trace
+    standaloneFinancial --> trace
+    decision --> trace
+    explanation --> trace
+    trace -->|JSON result and trace| ui
 ```
 
-### Natural-language interpretation
+The assistant and workbench send requests through the supervisor, which selects
+specialist agents for the requested workflow. The loan application form uses a
+separate customer-validation and decision pipeline. All workflows return JSON;
+agent steps record their inputs, outputs, status, and duration for display in
+the UI. All customer and account data is simulated.
 
-`/interpret` tries Google Gemini first. If Gemini returns an error or is
-unavailable (HTTP 503), it automatically falls back to `interpret_request_locally`,
-a rule-based classifier that requires no API call. The frontend never sees the
-difference — it always receives a structured workflow result or a clarification
-question.
+See the [architecture guide](docs/architecture.md) for a detailed diagram,
+request flows, and component responsibilities.
 
 ---
 
